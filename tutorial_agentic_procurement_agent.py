@@ -679,24 +679,23 @@ class OracleReadOnlyGateway:
                 SELECT *
                 FROM (
                     SELECT mis.INVENTORY_ITEM_ID,
-                           mis.VENDOR_ID,
+                           mis.SUPPLIER_ID                          AS VENDOR_ID,
                            pv.VENDOR_NAME,
-                           mis.VENDOR_SITE_ID,
+                           mis.SUPPLIER_SITE_ID                     AS VENDOR_SITE_ID,
                            pvs.VENDOR_SITE_CODE,
-                           NVL(mis.LEAD_TIME, 999)            AS lead_time_days,
-                           NVL(mis.MIN_ORDER_QTY, 0)          AS min_order_qty,
-                           NVL(pvs.LEAD_TIME_DAYS, mis.LEAD_TIME) AS site_lead_time,
-                           NVL(pvs.PRICE_OVERRIDE, 0)         AS list_price
+                           NVL(mis.PROCESSING_LEAD_TIME, 999)       AS lead_time_days,
+                           NVL(mis.MINIMUM_ORDER_QUANTITY, 0)       AS min_order_qty,
+                           NVL(mis.PROCESSING_LEAD_TIME, 999)       AS site_lead_time,
+                           NVL(mis.ITEM_PRICE, 0)                   AS list_price
                     FROM {self.tables.msc_item_suppliers} mis
                     LEFT JOIN {self.tables.po_vendors} pv
-                           ON pv.VENDOR_ID = mis.VENDOR_ID
+                           ON pv.VENDOR_ID = mis.SUPPLIER_ID
                     LEFT JOIN {self.tables.po_vendor_sites_all} pvs
-                           ON pvs.VENDOR_SITE_ID = mis.VENDOR_SITE_ID
+                           ON pvs.VENDOR_SITE_ID = mis.SUPPLIER_SITE_ID
                            AND pvs.INACTIVE_DATE IS NULL
                     WHERE mis.INVENTORY_ITEM_ID = :item_id
-                    AND (mis.DISABLE_DATE IS NULL OR mis.DISABLE_DATE > TRUNC(SYSDATE))
-                    ORDER BY NVL(mis.LEAD_TIME, 999) ASC,
-                             NVL(pvs.PRICE_OVERRIDE, 0) ASC,
+                    ORDER BY NVL(mis.PROCESSING_LEAD_TIME, 999) ASC,
+                             NVL(mis.ITEM_PRICE, 0) ASC,
                              pv.VENDOR_NAME ASC
                 )
                 WHERE ROWNUM <= :limit

@@ -1017,7 +1017,7 @@ class OracleReadOnlyGateway:
     def get_spend_summary(self, limit: int) -> list[dict[str, Any]]:
         """Supplier spend summary grouped by supplier + business unit (tutorial spec: Workflow 6)."""
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT pv.VENDOR_ID,
@@ -1031,7 +1031,7 @@ class OracleReadOnlyGateway:
                        MAX(ph.CREATION_DATE)                   AS last_po_date
                 FROM {self.tables.po_headers_all} ph
                 JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
-                JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
+                JOIN {self.tables.po_vendors} pv ON pv.VENDOR_ID = ph.VENDOR_ID
                 WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                   AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                 GROUP BY pv.VENDOR_ID, pv.VENDOR_NAME, ph.ORG_ID, ph.CURRENCY_CODE
@@ -1082,7 +1082,7 @@ class OracleReadOnlyGateway:
         """Detect purchases made outside of active blanket agreements (maverick spend).f"""
         try:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT ph.SEGMENT1 AS po_number,
@@ -1094,7 +1094,7 @@ class OracleReadOnlyGateway:
                            ph.CREATION_DATE
                     FROM {self.tables.po_headers_all} ph
                     JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
-                    JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
+                    JOIN {self.tables.po_vendors} pv ON pv.VENDOR_ID = ph.VENDOR_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                     AND ph.CREATION_DATE >= TRUNC(SYSDATE) - 365
@@ -1118,7 +1118,7 @@ class OracleReadOnlyGateway:
         """Identify items sourced from only one supplier (supply chain risk).f"""
         try:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT pl.ITEM_ID AS inventory_item_id,
@@ -1127,7 +1127,7 @@ class OracleReadOnlyGateway:
                            MAX(pv.VENDOR_NAME) AS sole_supplier_name
                     FROM {self.tables.po_headers_all} ph
                     JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
-                    JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
+                    JOIN {self.tables.po_vendors} pv ON pv.VENDOR_ID = ph.VENDOR_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                     AND ph.CREATION_DATE >= TRUNC(SYSDATE) - 365
@@ -2291,7 +2291,7 @@ class TutorialProcurementAgent:
     def _get_alternate_suppliers(self, item_id: int, exclude_vendor_id: int | None = None) -> list[dict[str, Any]]:
         """Get alternate suppliers for an item, ranked by reliability."""
         try:
-            sql = """
+            sql = f"""
                 SELECT mis.SUPPLIER_ID,
                        pv.VENDOR_NAME,
                        mis.LEAD_TIME,
@@ -2299,7 +2299,7 @@ class TutorialProcurementAgent:
                        mis.SUPPLIER_ITEM_NUMBER,
                        ROW_NUMBER() OVER (ORDER BY mis.LEAD_TIME ASC, pv.VENDOR_NAME ASC) as rank
                 FROM MSC.MSC_ITEM_SUPPLIERS mis
-                JOIN PO.PO_VENDORS pv ON pv.VENDOR_ID = mis.SUPPLIER_ID
+                JOIN {self.tables.po_vendors} pv ON pv.VENDOR_ID = mis.SUPPLIER_ID
                 WHERE mis.INVENTORY_ITEM_ID = :item_id
                 AND mis.EFFECTIVE_DATE <= TRUNC(SYSDATE)
                 AND (mis.DISABLE_DATE IS NULL OR mis.DISABLE_DATE > TRUNC(SYSDATE))

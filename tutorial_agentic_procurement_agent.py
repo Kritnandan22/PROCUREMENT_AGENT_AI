@@ -41,21 +41,24 @@ import openpyxl
 from dotenv import load_dotenv
 from openpyxl.styles import Font, PatternFill
 
+from config import get_config
+
 
 ROOT_DIR = Path(__file__).resolve().parent
 TUTORIAL_PATH = ROOT_DIR / "TUTORIAL_Agentic_Procurement_AI.md"
-OUTPUT_DIR = Path(__file__).resolve().parent / "tutorial_agent_outputs"
 
+# Load configuration (from config.yaml + environment variables)
+_app_config = get_config()
+OUTPUT_DIR = _app_config.output_dir
 
-load_dotenv(Path(__file__).with_name(".env"))
-
-DB_HOST = os.getenv("DB_HOST", "161.118.185.249")
-DB_PORT = int(os.getenv("DB_PORT", "1521"))
-DB_SID = os.getenv("DB_SID", "EBSDB")
-DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME", "ebs_EBSDB")
-APPS_USER = os.getenv("APPS_USER", "apps")
-APPS_PASSWORD = os.getenv("APPS_PASSWORD", "apps")
-ORACLE_CLIENT_PATH = os.getenv("ORACLE_CLIENT_PATH", "")
+# Legacy compatibility - expose config values as module-level variables
+DB_HOST = _app_config.database.host
+DB_PORT = _app_config.database.port
+DB_SID = _app_config.database.sid
+DB_SERVICE_NAME = _app_config.database.service_name
+APPS_USER = _app_config.database.user
+APPS_PASSWORD = _app_config.database.password
+ORACLE_CLIENT_PATH = _app_config.database.oracle_client_path
 
 
 def _init_oracle_client() -> bool:
@@ -153,6 +156,8 @@ class ProcurementDecisionEngine:
     No external API dependency. Uses weighted multi-factor scoring to evaluate
     scenarios and produce confidence-scored recommendations with rationale.
 
+    All thresholds and parameters are loaded from configuration for production flexibility.
+
     Decision Categories:
     - supplier_switch: Should we switch to an alternate supplier?
     - price_renegotiation: Should we renegotiate pricing?
@@ -161,9 +166,16 @@ class ProcurementDecisionEngine:
     - po_creation: Should a draft PO be created automatically?
     """
 
-    # Priority score mapping for urgency factor
-    _PRIORITY_SCORES = {"P1-CRITICAL": 1.0,
-                        "P2-HIGH": 0.75, "P3-MEDIUM": 0.5, "P4-LOW": 0.25}
+    def __init__(self):
+        """Initialize decision engine with configuration-based thresholds."""
+        self.config = _app_config
+        self.de_config = self.config.decision_engine
+        self.priorities = self.config.get_priorities()
+
+    @property
+    def _PRIORITY_SCORES(self) -> dict[str, float]:
+        """Get priority scores from configuration."""
+        return self.priorities
 
     def decide_supplier_switch(
         self,
@@ -186,15 +198,15 @@ class ProcurementDecisionEngine:
         # 0.0 (perfect) to 1.0 (never on-time)
         performance_score = (100 - on_time_rate) / 100
         # more deliveries = more statistical confidence
-        volume_score = min(total_deliveries / 20, 1.0)
+        volume_score = min(total_deliveries / self.de_config.min_deliveries, 1.0)
         # avg days late per delivery weighted
-        lateness_severity = min(total_late_days / 60, 1.0)
+        lateness_severity = min(total_late_days / self.de_config.on_time_rate_switch, 1.0)
 
         switch_score = (performance_score * 0.5) + \
             (volume_score * 0.3) + (lateness_severity * 0.2)
         has_viable_alternate = bool(alternates)
 
-        if switch_score >= 0.6 and on_time_rate < 70 and has_viable_alternate:
+        if switch_score >= 0.6 and on_time_rate < self.de_config.on_time_rate_switch and has_viable_alternate:
             decision = "switch"
             confidence = round(min(switch_score, 1.0), 2)
             best_alt = alternates[0]
@@ -205,13 +217,13 @@ class ProcurementDecisionEngine:
                 f"(lead time: {best_alt.get('lead_time', 'N/A')} days)."
             )
             recommended_vendor = best_alt
-        elif switch_score >= 0.4 or on_time_rate < 80:
+        elif switch_score >= 0.4 or on_time_rate < self.de_config.on_time_rate_monitor:
             decision = "monitor"
             confidence = round(switch_score, 2)
             rationale = (
                 f"Supplier {current_vendor.get('vendor_name', 'UNKNOWN')} shows "
-                f"{on_time_rate:.0f}% on-time rate. Below target but insufficient history "
-                f"for switch recommendation. Escalate if trend continues."
+                f"{on_time_rate:.0f}% on-time rate (target: {self.de_config.on_time_rate_monitor}%). "
+                f"Below target but insufficient history for switch recommendation. Escalate if trend continues."
             )
             recommended_vendor = None
         else:
@@ -262,25 +274,27 @@ class ProcurementDecisionEngine:
         savings_potential = (current_price - historical_avg) * \
             annual_volume if hist_deviation > 0 else 0
 
-        if contract_deviation is not None and contract_deviation > 5:
+        if contract_deviation is not None and contract_deviation > self.de_config.contract_breach_threshold:
             decision = "renegotiate_immediately"
             confidence = min(0.7 + (contract_deviation / 100), 1.0)
             strategy = "enforce_contract"
             rationale = (
                 f"Item {item_id} priced at ${current_price:.2f}, which is "
                 f"{contract_deviation:.1f}% above active contract price ${contract_price:.2f}. "
-                f"Immediate enforcement required. Potential savings: ${savings_potential:,.2f}/year."
+                f"Exceeds threshold ({self.de_config.contract_breach_threshold}%). Immediate enforcement required. "
+                f"Potential savings: ${savings_potential:,.2f}/year."
             )
-        elif hist_deviation > 20:
+        elif hist_deviation > self.de_config.price_dev_renegotiate:
             decision = "renegotiate"
             confidence = round(price_urgency, 2)
             strategy = "historical_baseline"
             rationale = (
                 f"Item {item_id} priced at ${current_price:.2f}, which is "
                 f"{hist_deviation:.1f}% above 12-month average ${historical_avg:.2f}. "
-                f"Recommend renegotiation. Estimated savings: ${savings_potential:,.2f}/year."
+                f"Exceeds threshold ({self.de_config.price_dev_renegotiate}%). Recommend renegotiation. "
+                f"Estimated savings: ${savings_potential:,.2f}/year."
             )
-        elif hist_deviation > 10:
+        elif hist_deviation > self.de_config.price_dev_review:
             decision = "review"
             confidence = round(price_urgency * 0.7, 2)
             strategy = "monitor_and_negotiate"
@@ -493,7 +507,14 @@ class OracleReadOnlyGateway:
     """Read-only Oracle access layer.
 
     This mirrors the tutorial's MCP safety boundary inside a local runner.
+    All table names and business logic parameters are loaded from configuration.
     """
+
+    def __init__(self):
+        """Initialize gateway with configuration."""
+        self.config = _app_config
+        self.tables = self.config.tables
+        self.exception_types = self.config.get_exception_types()
 
     def test_connection(self) -> dict[str, Any]:
         with _conn() as conn:
@@ -545,20 +566,20 @@ class OracleReadOnlyGateway:
     def get_exception_summary(self, limit: int = 10) -> dict[str, Any]:
         total_rows = self.execute_query(
             (
-                "SELECT COUNT(*) AS total_exceptions "
-                "FROM MSC.MSC_EXCEPTION_DETAILS"
+                f"SELECT COUNT(*) AS total_exceptions "
+                f"FROM {self.tables.msc_exception_details}"
             ),
             max_rows=1,
         )
         top_plans = self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT p.PLAN_ID,
                        p.COMPILE_DESIGNATOR AS plan_name,
                        COUNT(e.EXCEPTION_DETAIL_ID) AS exception_count
-                FROM MSC.MSC_PLANS p
-                JOIN MSC.MSC_EXCEPTION_DETAILS e ON e.PLAN_ID = p.PLAN_ID
+                FROM {self.tables.msc_plans} p
+                JOIN {self.tables.msc_exception_details} e ON e.PLAN_ID = p.PLAN_ID
                 GROUP BY p.PLAN_ID, p.COMPILE_DESIGNATOR
                 ORDER BY COUNT(e.EXCEPTION_DETAIL_ID) DESC
             )
@@ -576,12 +597,12 @@ class OracleReadOnlyGateway:
 
     def get_exception_types(self, plan_id: int) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT e.EXCEPTION_TYPE,
                    COUNT(*) AS exception_count,
                    ROUND(AVG(NVL(e.QUANTITY, 0)), 2) AS avg_quantity,
                    ROUND(SUM(NVL(e.QUANTITY, 0)), 2) AS total_quantity
-            FROM MSC.MSC_EXCEPTION_DETAILS e
+            FROM {self.tables.msc_exception_details} e
             WHERE e.PLAN_ID = :plan_id
             GROUP BY e.EXCEPTION_TYPE
             ORDER BY COUNT(*) DESC
@@ -597,7 +618,7 @@ class OracleReadOnlyGateway:
         limit: int,
     ) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT e.EXCEPTION_DETAIL_ID,
@@ -608,7 +629,7 @@ class OracleReadOnlyGateway:
                        NVL(e.QUANTITY, 0) AS quantity,
                        e.DATE1,
                        e.DATE2
-                FROM MSC.MSC_EXCEPTION_DETAILS e
+                FROM {self.tables.msc_exception_details} e
                 WHERE e.PLAN_ID = :plan_id
                   AND e.EXCEPTION_TYPE = :exception_type
                 ORDER BY NVL(e.QUANTITY, 0) DESC, e.EXCEPTION_DETAIL_ID
@@ -625,7 +646,7 @@ class OracleReadOnlyGateway:
 
     def get_item_context(self, item_id: int) -> dict[str, Any]:
         rows = self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT INVENTORY_ITEM_ID,
@@ -636,7 +657,7 @@ class OracleReadOnlyGateway:
                        FULL_LEAD_TIME,
                        BUYER_ID,
                        PURCHASING_ENABLED_FLAG
-                FROM INV.MTL_SYSTEM_ITEMS_B
+                FROM {self.tables.system_items_b}
                 WHERE INVENTORY_ITEM_ID = :item_id
             )
             WHERE ROWNUM <= 1
@@ -715,8 +736,8 @@ class OracleReadOnlyGateway:
                            pll.QUANTITY
                            - NVL(pll.QUANTITY_RECEIVED, 0)
                        ) AS qty_outstanding
-                FROM APPS.PO_HEADERS_ALL ph
-                JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                FROM {self.tables.po_headers_all} ph
+                JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                 JOIN APPS.PO_LINE_LOCATIONS_ALL pll
                   ON pll.PO_LINE_ID = pl.PO_LINE_ID
                 WHERE pl.ITEM_ID = :item_id
@@ -878,8 +899,8 @@ class OracleReadOnlyGateway:
                        pll.QUANTITY
                            - NVL(pll.QUANTITY_RECEIVED, 0)
                            AS qty_outstanding
-                FROM APPS.PO_HEADERS_ALL ph
-                JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                FROM {self.tables.po_headers_all} ph
+                JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                                 JOIN APPS.PO_LINE_LOCATIONS_ALL pll
                                     ON pll.PO_LINE_ID = pl.PO_LINE_ID
                 JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
@@ -903,8 +924,8 @@ class OracleReadOnlyGateway:
                 SELECT pl.ITEM_ID,
                        AVG(pl.UNIT_PRICE) AS avg_unit_price,
                        COUNT(*) AS sample_size
-                FROM APPS.PO_LINES_ALL pl
-                                JOIN APPS.PO_HEADERS_ALL ph
+                FROM {self.tables.po_lines_all} pl
+                                JOIN {self.tables.po_headers_all} ph
                                     ON ph.PO_HEADER_ID = pl.PO_HEADER_ID
                 WHERE ph.CREATION_DATE >= ADD_MONTHS(TRUNC(SYSDATE), -12)
                   AND ph.TYPE_LOOKUP_CODE = 'STANDARD'
@@ -929,8 +950,8 @@ class OracleReadOnlyGateway:
                        ) AS pct_deviation,
                        pb.sample_size,
                        ph.CREATION_DATE AS po_creation_date
-                FROM APPS.PO_LINES_ALL pl
-                                JOIN APPS.PO_HEADERS_ALL ph
+                FROM {self.tables.po_lines_all} pl
+                                JOIN {self.tables.po_headers_all} ph
                                     ON ph.PO_HEADER_ID = pl.PO_HEADER_ID
                 JOIN price_base pb ON pb.ITEM_ID = pl.ITEM_ID
                 WHERE pb.sample_size >= 3
@@ -1008,8 +1029,8 @@ class OracleReadOnlyGateway:
                        ph.CURRENCY_CODE,
                        MIN(ph.CREATION_DATE)                   AS first_po_date,
                        MAX(ph.CREATION_DATE)                   AS last_po_date
-                FROM APPS.PO_HEADERS_ALL ph
-                JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                FROM {self.tables.po_headers_all} ph
+                JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                 JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
                 WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                   AND ph.AUTHORIZATION_STATUS = 'APPROVED'
@@ -1038,8 +1059,8 @@ class OracleReadOnlyGateway:
                            COUNT(DISTINCT pl.ITEM_ID)              AS item_count,
                            SUM(pl.QUANTITY * pl.UNIT_PRICE)        AS total_spend,
                            ph.CURRENCY_CODE
-                    FROM APPS.PO_HEADERS_ALL ph
-                    JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                    FROM {self.tables.po_headers_all} ph
+                    JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                     AND ph.CREATION_DATE >= ADD_MONTHS(TRUNC(SYSDATE), -24)
@@ -1071,14 +1092,14 @@ class OracleReadOnlyGateway:
                            pl.QUANTITY,
                            ROUND(pl.QUANTITY * pl.UNIT_PRICE, 2) AS line_spend,
                            ph.CREATION_DATE
-                    FROM APPS.PO_HEADERS_ALL ph
-                    JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                    FROM {self.tables.po_headers_all} ph
+                    JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                     JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                     AND ph.CREATION_DATE >= TRUNC(SYSDATE) - 365
                     AND NOT EXISTS (
-                        SELECT 1 FROM APPS.PO_HEADERS_ALL pa
+                        SELECT 1 FROM {self.tables.po_headers_all} pa
                         WHERE pa.TYPE_LOOKUP_CODE IN ('BLANKET', 'CONTRACT')
                         AND pa.VENDOR_ID = ph.VENDOR_ID
                         AND pa.AUTHORIZATION_STATUS = 'APPROVED'
@@ -1104,8 +1125,8 @@ class OracleReadOnlyGateway:
                            COUNT(DISTINCT ph.VENDOR_ID) AS supplier_count,
                            SUM(pl.QUANTITY * pl.UNIT_PRICE) AS total_spend,
                            MAX(pv.VENDOR_NAME) AS sole_supplier_name
-                    FROM APPS.PO_HEADERS_ALL ph
-                    JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                    FROM {self.tables.po_headers_all} ph
+                    JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                     JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
@@ -1138,8 +1159,8 @@ class OracleReadOnlyGateway:
                            ROUND(AVG(pl.UNIT_PRICE), 4) AS avg_price,
                            ROUND(MAX(pl.UNIT_PRICE) - MIN(pl.UNIT_PRICE), 4) AS price_spread,
                            SUM(pl.QUANTITY * pl.UNIT_PRICE) AS total_spend
-                    FROM APPS.PO_HEADERS_ALL ph
-                    JOIN APPS.PO_LINES_ALL pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
+                    FROM {self.tables.po_headers_all} ph
+                    JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
                     WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                     AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                     AND ph.CREATION_DATE >= TRUNC(SYSDATE) - 365
@@ -1157,6 +1178,26 @@ class OracleReadOnlyGateway:
             )
         except Exception:
             return []
+
+    def list_organization_ids(self) -> dict[str, Any]:
+        """Get all available organization IDs from configured table.
+
+        Returns a dict with total count and list of organizations.
+        """
+        rows = self.execute_query(
+            f"""
+            SELECT DISTINCT
+                   mp.ORGANIZATION_ID,
+                   mp.ORGANIZATION_CODE
+            FROM {self.tables.mtp_parameters} mp
+            ORDER BY mp.ORGANIZATION_ID
+            """,
+            max_rows=1000,
+        )
+        return {
+            "total_count": len(rows),
+            "organizations": rows,
+        }
 
 
 class TutorialProcurementAgent:
@@ -1408,7 +1449,7 @@ class TutorialProcurementAgent:
                 # Try to get from supplier contract/agreement
                 sql = """
                     SELECT AVG(pl.UNIT_PRICE) AS avg_unit_price
-                    FROM PO.PO_LINES_ALL pl
+                    FROM {self.tables.po_lines_all} pl
                     JOIN PO.PO_HEADERS_ALL ph ON ph.PO_HEADER_ID = pl.PO_HEADER_ID
                     WHERE pl.INVENTORY_ITEM_ID = :item_id
                     AND ph.VENDOR_ID = :vendor_id

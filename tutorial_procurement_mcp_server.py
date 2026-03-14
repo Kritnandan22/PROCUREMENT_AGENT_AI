@@ -153,16 +153,27 @@ def read_output_file(filename: str) -> str:
             return _err("Access denied: path outside output directory")
         if not path.exists():
             return _err(f"File not found: {filename}")
-            
+
         if filename.endswith(".xlsx"):
             import base64
             with open(path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode('utf-8')
             return _ok({"filename": filename, "format": "base64", "content": encoded})
-            
+
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         return _ok({"filename": filename, "format": "text", "content": content})
+    except Exception as exc:
+        return _err(str(exc), detail=traceback.format_exc())
+
+
+@mcp.tool()
+def list_organization_ids() -> str:
+    """List all available organization IDs from Oracle MTL_PARAMETERS table."""
+    try:
+        gateway = OracleReadOnlyGateway()
+        result = gateway.list_organization_ids()
+        return _ok(result, message="Organization IDs retrieved successfully")
     except Exception as exc:
         return _err(str(exc), detail=traceback.format_exc())
 

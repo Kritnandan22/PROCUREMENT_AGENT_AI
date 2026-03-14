@@ -1,0 +1,129 @@
+# Production Configuration for Procurement Agent
+# This file contains all configurable parameters for the procurement agent
+# Environment variables override these values
+
+# Database Configuration
+database:
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  sid: ${DB_SID}
+  service_name: ${DB_SERVICE_NAME}
+  user: ${APPS_USER}
+  password: ${APPS_PASSWORD}
+  oracle_client_path: ${ORACLE_CLIENT_PATH}
+  pool_min: 1
+  pool_max: 4
+  pool_increment: 1
+  stmt_cache_size: 50
+
+# Oracle EBS Table Mappings (schema.table_name format)
+# These can be overridden for different EBS instances or custom setups
+tables:
+  inventory:
+    system_items_b: INV.MTL_SYSTEM_ITEMS_B
+    parameters: INV.MTL_PARAMETERS
+  planning:
+    plans: MSC.MSC_PLANS
+    exception_details: MSC.MSC_EXCEPTION_DETAILS
+  procurement:
+    po_headers_all: APPS.PO_HEADERS_ALL
+    po_lines_all: APPS.PO_LINES_ALL
+    vendors: APPS.PO_VENDORS
+    vendor_sites: APPS.PO_VENDOR_SITES_ALL
+
+# Exception Types and Labels
+# Map exception_type IDs to business labels
+exception_types:
+  1: "Items with No Activity"
+  2: "Items Exceeding Safety Stock"
+  3: "Excess Inventory"
+  4: "Slow-Moving Items"
+  5: "Low Forecast Accuracy"
+  6: "Past Due Purchase Orders"
+  7: "Low Supplier On-Time Performance"
+  8: "Demand Volatility"
+
+# Workflows Configuration
+workflows:
+  exception_triage:
+    description: "Triage and recommend actions for procurement exceptions"
+    enabled: true
+    default_limit: 50
+  late_supplier:
+    description: "Identify and manage late-performing suppliers"
+    enabled: true
+    default_limit: 50
+  safety_stock:
+    description: "Analyze and optimize safety stock levels"
+    enabled: true
+    default_limit: 50
+  price_anomaly:
+    description: "Detect and flag price anomalies"
+    enabled: true
+    default_limit: 50
+  demand_to_po:
+    description: "Convert demand signals to purchase orders"
+    enabled: true
+    default_limit: 50
+  spend_analytics:
+    description: "Analyze spend patterns and supplier concentration"
+    enabled: true
+    default_limit: 50
+
+# Decision Engine Thresholds
+decision_engine:
+  supplier_performance:
+    on_time_rate_threshold_switch: 70  # Below this%, consider supplier switch
+    on_time_rate_threshold_monitor: 80  # Below this%, monitor supplier
+    min_deliveries_for_confidence: 20
+    max_late_days_severity: 60
+  pricing:
+    price_deviation_renegotiate: 20  # Percent above historical avg
+    price_deviation_review: 10       # Percent above historical avg
+    contract_breach_threshold: 5     # Percent above contract price
+  consolidation:
+    min_spend_for_consolidation: 10000  # Annual spend threshold
+    max_supplier_variance: 0.10  # Price variance tolerance (10%)
+
+# Priority Scoring Configuration
+priorities:
+  P1-CRITICAL: 1.0
+  P2-HIGH: 0.75
+  P3-MEDIUM: 0.5
+  P4-LOW: 0.25
+
+# Autonomy Levels
+autonomy:
+  level_0:
+    description: "Read-only analysis and reporting"
+    write_enabled: false
+  level_1:
+    description: "Suggest actions, require approval"
+    write_enabled: false
+    create_drafts: true
+  level_2:
+    description: "Create draft POs automatically"
+    write_enabled: false
+    create_drafts: true
+    auto_approve_low_risk: false
+
+# Output Configuration
+output:
+  directory: ${OUTPUT_DIR}
+  json_format: "tutorial_agent_run_{timestamp}.json"
+  excel_format: "tutorial_agent_run_{timestamp}.xlsx"
+  retention_days: 90
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/procurement_agent.log
+
+# Feature Flags
+features:
+  enable_claude_engine: true
+  enable_rules_engine: true
+  enable_draft_po_creation: true
+  enable_supplier_analytics: true
+  enable_price_analytics: true

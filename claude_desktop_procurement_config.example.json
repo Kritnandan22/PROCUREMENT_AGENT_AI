@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "procurement-agent-ai": {
+            "command": "/absolute/path/to/python3",
+            "args": [
+                "/absolute/path/to/PROCUREMENT_AGENT_AI/tutorial_procurement_mcp_server.py"
+            ]
+        }
+    }
+}

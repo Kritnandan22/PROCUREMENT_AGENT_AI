@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: procurement-mcp-server
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python tutorial_procurement_mcp_server.py --sse
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: MCP_HOST
+        value: 0.0.0.0
+      - key: ORACLE_USER
+        sync: false
+      - key: ORACLE_PASSWORD
+        sync: false
+      - key: ORACLE_DSN
+        sync: false

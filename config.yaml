@@ -25,11 +25,23 @@ tables:
   planning:
     plans: MSC.MSC_PLANS
     exception_details: MSC.MSC_EXCEPTION_DETAILS
+    supplies: MSC.MSC_SUPPLIES
+    demands: MSC.MSC_DEMANDS
+    full_pegging: MSC.MSC_FULL_PEGGING
+    safety_stocks: MSC.MSC_SAFETY_STOCKS
+    system_items: MSC.MSC_SYSTEM_ITEMS
+    item_suppliers: MSC.MSC_ITEM_SUPPLIERS
   procurement:
     po_headers_all: APPS.PO_HEADERS_ALL
     po_lines_all: APPS.PO_LINES_ALL
+    po_line_locations_all: APPS.PO_LINE_LOCATIONS_ALL
     vendors: APPS.PO_VENDORS
+    po_vendors: APPS.PO_VENDORS
     vendor_sites: APPS.PO_VENDOR_SITES_ALL
+    agreements: APPS.PO_AGREEMENTS
+  other:
+    hr_locations: HR.HR_LOCATIONS
+    ap_terms: APPS.AP_TERMS
 
 # Exception Types and Labels
 # Map exception_type IDs to business labels

@@ -885,7 +885,7 @@ class OracleReadOnlyGateway:
         limit: int,
     ) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT ph.SEGMENT1 AS po_number,
@@ -901,14 +901,13 @@ class OracleReadOnlyGateway:
                            AS qty_outstanding
                 FROM {self.tables.po_headers_all} ph
                 JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
-                                JOIN APPS.PO_LINE_LOCATIONS_ALL pll
-                                    ON pll.PO_LINE_ID = pl.PO_LINE_ID
-                JOIN APPS.PO_VENDORS pv ON pv.VENDOR_ID = ph.VENDOR_ID
+                JOIN {self.tables.po_line_locations_all} pll
+                    ON pll.PO_LINE_ID = pl.PO_LINE_ID
+                JOIN {self.tables.po_vendors} pv ON pv.VENDOR_ID = ph.VENDOR_ID
                 WHERE ph.TYPE_LOOKUP_CODE = 'STANDARD'
                   AND ph.AUTHORIZATION_STATUS = 'APPROVED'
                   AND pll.NEED_BY_DATE < TRUNC(SYSDATE) + :days_ahead
-                                    AND NVL(pll.QUANTITY_RECEIVED, 0)
-                                            < NVL(pll.QUANTITY, 0)
+                  AND NVL(pll.QUANTITY_RECEIVED, 0) < NVL(pll.QUANTITY, 0)
                 ORDER BY days_overdue DESC, qty_outstanding DESC
             )
             WHERE ROWNUM <= :limit

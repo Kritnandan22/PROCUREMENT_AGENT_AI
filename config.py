@@ -171,11 +171,11 @@ class AppConfig:
             msc_system_items=tables.get("planning", {}).get("system_items", "MSC.MSC_SYSTEM_ITEMS"),
             msc_item_suppliers=tables.get("planning", {}).get("item_suppliers", "MSC.MSC_ITEM_SUPPLIERS"),
             # Procurement
-            po_headers_all=tables.get("procurement", {}).get("po_headers_all", "APPS.PO_HEADERS_ALL"),
-            po_lines_all=tables.get("procurement", {}).get("po_lines_all", "APPS.PO_LINES_ALL"),
-            po_line_locations_all=tables.get("procurement", {}).get("po_line_locations_all", "APPS.PO_LINE_LOCATIONS_ALL"),
-            po_vendors=tables.get("procurement", {}).get("po_vendors", tables.get("procurement", {}).get("vendors", "APPS.PO_VENDORS")),
-            po_vendor_sites_all=tables.get("procurement", {}).get("vendor_sites", "APPS.PO_VENDOR_SITES_ALL"),
+            po_headers_all=tables.get("procurement", {}).get("po_headers_all", "PO.PO_HEADERS_ALL"),
+            po_lines_all=tables.get("procurement", {}).get("po_lines_all", "PO.PO_LINES_ALL"),
+            po_line_locations_all=tables.get("procurement", {}).get("po_line_locations_all", "PO.PO_LINE_LOCATIONS_ALL"),
+            po_vendors=tables.get("procurement", {}).get("po_vendors", tables.get("procurement", {}).get("vendors", "PO.PO_VENDORS_EBS")),
+            po_vendor_sites_all=tables.get("procurement", {}).get("vendor_sites", "PO.PO_VENDOR_SITES_ALL_EBS"),
             po_agreements=tables.get("procurement", {}).get("agreements", "APPS.PO_AGREEMENTS"),
             # Other
             hr_locations=tables.get("other", {}).get("hr_locations", "HR.HR_LOCATIONS"),

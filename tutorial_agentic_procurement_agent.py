@@ -675,7 +675,7 @@ class OracleReadOnlyGateway:
         """Get approved suppliers for an item, sorted cheapest+fastest (tutorial spec: Workflow 3).f"""
         try:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT mis.INVENTORY_ITEM_ID,
@@ -706,7 +706,7 @@ class OracleReadOnlyGateway:
             )
         except Exception:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT VENDOR_ID, VENDOR_NAME

@@ -32,12 +32,12 @@ tables:
     system_items: MSC.MSC_SYSTEM_ITEMS
     item_suppliers: MSC.MSC_ITEM_SUPPLIERS
   procurement:
-    po_headers_all: APPS.PO_HEADERS_ALL
-    po_lines_all: APPS.PO_LINES_ALL
-    po_line_locations_all: APPS.PO_LINE_LOCATIONS_ALL
-    vendors: APPS.PO_VENDORS
-    po_vendors: APPS.PO_VENDORS
-    vendor_sites: APPS.PO_VENDOR_SITES_ALL
+    po_headers_all: PO.PO_HEADERS_ALL
+    po_lines_all: PO.PO_LINES_ALL
+    po_line_locations_all: PO.PO_LINE_LOCATIONS_ALL
+    vendors: PO.PO_VENDORS_EBS
+    po_vendors: PO.PO_VENDORS_EBS
+    vendor_sites: PO.PO_VENDOR_SITES_ALL_EBS
     agreements: APPS.PO_AGREEMENTS
   other:
     hr_locations: HR.HR_LOCATIONS

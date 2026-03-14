@@ -1,17 +1,22 @@
 services:
   - type: web
     name: procurement-mcp-server
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python tutorial_procurement_mcp_server.py --sse
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
       - key: MCP_HOST
         value: 0.0.0.0
-      - key: ORACLE_USER
+      - key: DB_HOST
         sync: false
-      - key: ORACLE_PASSWORD
+      - key: DB_PORT
         sync: false
-      - key: ORACLE_DSN
+      - key: DB_SID
+        sync: false
+      - key: DB_SERVICE_NAME
+        sync: false
+      - key: APPS_USER
+        sync: false
+      - key: APPS_PASSWORD
         sync: false

@@ -687,10 +687,10 @@ class OracleReadOnlyGateway:
                            NVL(mis.MIN_ORDER_QTY, 0)          AS min_order_qty,
                            NVL(pvs.LEAD_TIME_DAYS, mis.LEAD_TIME) AS site_lead_time,
                            NVL(pvs.PRICE_OVERRIDE, 0)         AS list_price
-                    FROM MSC.MSC_ITEM_SUPPLIERS mis
-                    LEFT JOIN APPS.PO_VENDORS pv
+                    FROM {self.tables.msc_item_suppliers} mis
+                    LEFT JOIN {self.tables.po_vendors} pv
                            ON pv.VENDOR_ID = mis.VENDOR_ID
-                    LEFT JOIN APPS.PO_VENDOR_SITES_ALL pvs
+                    LEFT JOIN {self.tables.po_vendor_sites_all} pvs
                            ON pvs.VENDOR_SITE_ID = mis.VENDOR_SITE_ID
                            AND pvs.INACTIVE_DATE IS NULL
                     WHERE mis.INVENTORY_ITEM_ID = :item_id
@@ -710,7 +710,7 @@ class OracleReadOnlyGateway:
                 SELECT *
                 FROM (
                     SELECT VENDOR_ID, VENDOR_NAME
-                    FROM APPS.PO_VENDORS
+                    FROM {self.tables.po_vendors}
                     ORDER BY VENDOR_NAME
                 )
                 WHERE ROWNUM <= :limit
@@ -738,7 +738,7 @@ class OracleReadOnlyGateway:
                        ) AS qty_outstanding
                 FROM {self.tables.po_headers_all} ph
                 JOIN {self.tables.po_lines_all} pl ON pl.PO_HEADER_ID = ph.PO_HEADER_ID
-                JOIN APPS.PO_LINE_LOCATIONS_ALL pll
+                JOIN {self.tables.po_line_locations_all} pll
                   ON pll.PO_LINE_ID = pl.PO_LINE_ID
                 WHERE pl.ITEM_ID = :item_id
                   AND ph.TYPE_LOOKUP_CODE = 'STANDARD'
@@ -774,12 +774,12 @@ class OracleReadOnlyGateway:
                            ss.SAFETY_STOCK_QUANTITY
                            - NVL(s.current_supply, 0)
                        ) AS shortage
-                FROM MSC.MSC_SAFETY_STOCKS ss
+                FROM {self.tables.msc_safety_stocks} ss
                 LEFT JOIN (
                     SELECT PLAN_ID,
                            INVENTORY_ITEM_ID,
                            SUM(NEW_ORDER_QUANTITY) AS current_supply
-                    FROM MSC.MSC_SUPPLIES
+                    FROM {self.tables.msc_supplies}
                     WHERE ORDER_TYPE IN (1, 2, 3)
                     GROUP BY PLAN_ID, INVENTORY_ITEM_ID
                      ) s ON s.PLAN_ID = ss.PLAN_ID
@@ -811,8 +811,8 @@ class OracleReadOnlyGateway:
                        s.ORDER_TYPE,
                        s.NEW_ORDER_QUANTITY AS planned_qty,
                        s.FIRM_DATE AS need_by
-                FROM MSC.MSC_FULL_PEGGING fp
-                JOIN MSC.MSC_SUPPLIES s
+                FROM {self.tables.msc_full_pegging} fp
+                JOIN {self.tables.msc_supplies} s
                   ON s.PLAN_ID = fp.PLAN_ID
                                  AND s.TRANSACTION_ID = fp.TRANSACTION_ID
                 WHERE fp.PLAN_ID = :plan_id
@@ -849,8 +849,8 @@ class OracleReadOnlyGateway:
                            NVL(d.SELLING_PRICE, 0)             AS selling_price,
                            NVL(d.ORIGINATION_QUANTITY, 0)
                                * NVL(d.SELLING_PRICE, 0)       AS demand_revenue
-                    FROM MSC.MSC_FULL_PEGGING fp
-                    JOIN MSC.MSC_DEMANDS d
+                    FROM {self.tables.msc_full_pegging} fp
+                    JOIN {self.tables.msc_demands} d
                       ON d.PLAN_ID    = fp.PLAN_ID
                      AND d.DEMAND_ID  = fp.DEMAND_ID
                     WHERE fp.PLAN_ID             = :plan_id
@@ -998,9 +998,9 @@ class OracleReadOnlyGateway:
                        s.ORDER_TYPE,
                        s.NEW_ORDER_QUANTITY AS planned_qty,
                        s.FIRM_DATE AS need_by
-                FROM MSC.MSC_FULL_PEGGING fp
-                JOIN MSC.MSC_PLANS p ON p.PLAN_ID = fp.PLAN_ID
-                JOIN MSC.MSC_SUPPLIES s
+                FROM {self.tables.msc_full_pegging} fp
+                JOIN {self.tables.msc_plans} p ON p.PLAN_ID = fp.PLAN_ID
+                JOIN {self.tables.msc_supplies} s
                   ON s.PLAN_ID = fp.PLAN_ID
                                  AND s.TRANSACTION_ID = fp.TRANSACTION_ID
                 WHERE fp.PLAN_ID = :plan_id
@@ -1378,7 +1378,7 @@ class TutorialProcurementAgent:
         try:
             sql = """
                 SELECT LOCATION_ID, LOCATION_CODE, LOCATION_NAME
-                FROM HR.HR_LOCATIONS
+                FROM {self.tables.hr_locations}
                 WHERE INACTIVE_DATE IS NULL
                 ORDER BY LOCATION_ID
             """
@@ -1555,7 +1555,7 @@ class TutorialProcurementAgent:
                            END_DATE_ACTIVE,
                            HOLD_FLAG,
                            VENDOR_TYPE_LOOKUP_CODE
-                    FROM APPS.PO_VENDORS
+                    FROM {self.tables.po_vendors}
                     WHERE VENDOR_ID = :vendor_id
                     """,
                     binds={"vendor_id": vendor_id},
@@ -1590,7 +1590,7 @@ class TutorialProcurementAgent:
                     """
                     SELECT SEGMENT1, PURCHASING_ENABLED_FLAG,
                            END_DATE_ACTIVE, INVENTORY_ITEM_ID
-                    FROM INV.MTL_SYSTEM_ITEMS_B
+                    FROM {self.tables.system_items_b}
                     WHERE INVENTORY_ITEM_ID = :item_id
                     AND ROWNUM = 1
                     """,
@@ -1625,7 +1625,7 @@ class TutorialProcurementAgent:
                 result = self.gateway.execute_query(
                     """
                     SELECT LEAD_TIME_DAYS
-                    FROM APPS.PO_VENDOR_SITES_ALL
+                    FROM {self.tables.po_vendor_sites_all}
                     WHERE VENDOR_ID = :vendor_id
                     AND INACTIVE_DATE IS NULL
                     AND ROWNUM = 1
@@ -2450,12 +2450,12 @@ class TutorialProcurementAgent:
                        NVL(s.current_supply, 0) AS current_supply,
                        ss.SAFETY_STOCK_QUANTITY - NVL(s.current_supply, 0) AS shortage,
                        'SHORTAGE' AS alert_type
-                FROM MSC.MSC_SAFETY_STOCKS ss
+                FROM {self.tables.msc_safety_stocks} ss
                 LEFT JOIN (
                     SELECT PLAN_ID,
                            INVENTORY_ITEM_ID,
                            SUM(NEW_ORDER_QUANTITY) AS current_supply
-                    FROM MSC.MSC_SUPPLIES
+                    FROM {self.tables.msc_supplies}
                     WHERE ORDER_TYPE IN (1, 2, 3)
                     GROUP BY PLAN_ID, INVENTORY_ITEM_ID
                 ) s ON s.PLAN_ID = ss.PLAN_ID AND s.INVENTORY_ITEM_ID = ss.INVENTORY_ITEM_ID
@@ -2479,12 +2479,12 @@ class TutorialProcurementAgent:
                        NVL(s.current_supply, 0) AS current_supply,
                        NVL(s.current_supply, 0) - ss.SAFETY_STOCK_QUANTITY AS excess,
                        'EXCESS' AS alert_type
-                FROM MSC.MSC_SAFETY_STOCKS ss
+                FROM {self.tables.msc_safety_stocks} ss
                 LEFT JOIN (
                     SELECT PLAN_ID,
                            INVENTORY_ITEM_ID,
                            SUM(NEW_ORDER_QUANTITY) AS current_supply
-                    FROM MSC.MSC_SUPPLIES
+                    FROM {self.tables.msc_supplies}
                     WHERE ORDER_TYPE IN (1, 2, 3)
                     GROUP BY PLAN_ID, INVENTORY_ITEM_ID
                 ) s ON s.PLAN_ID = ss.PLAN_ID AND s.INVENTORY_ITEM_ID = ss.INVENTORY_ITEM_ID

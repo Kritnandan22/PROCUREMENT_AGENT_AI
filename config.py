@@ -52,14 +52,28 @@ class DatabaseConfig:
 @dataclass
 class TableMappings:
     """Oracle EBS table mappings (schema.table format)."""
+    # Inventory
     system_items_b: str
     mtp_parameters: str
+    # Planning/Supply Chain
     msc_plans: str
     msc_exception_details: str
+    msc_supplies: str
+    msc_demands: str
+    msc_full_pegging: str
+    msc_safety_stocks: str
+    msc_system_items: str
+    msc_item_suppliers: str
+    # Procurement
     po_headers_all: str
     po_lines_all: str
+    po_line_locations_all: str
     po_vendors: str
     po_vendor_sites_all: str
+    po_agreements: str
+    # Other
+    hr_locations: str
+    ap_terms: str
 
 
 @dataclass
@@ -144,14 +158,28 @@ class AppConfig:
         tables = self._yaml_config.get("tables", {})
 
         self.tables = TableMappings(
+            # Inventory
             system_items_b=tables.get("inventory", {}).get("system_items_b", "INV.MTL_SYSTEM_ITEMS_B"),
             mtp_parameters=tables.get("inventory", {}).get("parameters", "INV.MTL_PARAMETERS"),
+            # Planning/Supply Chain
             msc_plans=tables.get("planning", {}).get("plans", "MSC.MSC_PLANS"),
             msc_exception_details=tables.get("planning", {}).get("exception_details", "MSC.MSC_EXCEPTION_DETAILS"),
+            msc_supplies=tables.get("planning", {}).get("supplies", "MSC.MSC_SUPPLIES"),
+            msc_demands=tables.get("planning", {}).get("demands", "MSC.MSC_DEMANDS"),
+            msc_full_pegging=tables.get("planning", {}).get("full_pegging", "MSC.MSC_FULL_PEGGING"),
+            msc_safety_stocks=tables.get("planning", {}).get("safety_stocks", "MSC.MSC_SAFETY_STOCKS"),
+            msc_system_items=tables.get("planning", {}).get("system_items", "MSC.MSC_SYSTEM_ITEMS"),
+            msc_item_suppliers=tables.get("planning", {}).get("item_suppliers", "MSC.MSC_ITEM_SUPPLIERS"),
+            # Procurement
             po_headers_all=tables.get("procurement", {}).get("po_headers_all", "APPS.PO_HEADERS_ALL"),
             po_lines_all=tables.get("procurement", {}).get("po_lines_all", "APPS.PO_LINES_ALL"),
-            po_vendors=tables.get("procurement", {}).get("vendors", "APPS.PO_VENDORS"),
+            po_line_locations_all=tables.get("procurement", {}).get("po_line_locations_all", "APPS.PO_LINE_LOCATIONS_ALL"),
+            po_vendors=tables.get("procurement", {}).get("po_vendors", tables.get("procurement", {}).get("vendors", "APPS.PO_VENDORS")),
             po_vendor_sites_all=tables.get("procurement", {}).get("vendor_sites", "APPS.PO_VENDOR_SITES_ALL"),
+            po_agreements=tables.get("procurement", {}).get("agreements", "APPS.PO_AGREEMENTS"),
+            # Other
+            hr_locations=tables.get("other", {}).get("hr_locations", "HR.HR_LOCATIONS"),
+            ap_terms=tables.get("other", {}).get("ap_terms", "APPS.AP_TERMS"),
         )
 
     def _load_decision_engine_config(self) -> None:

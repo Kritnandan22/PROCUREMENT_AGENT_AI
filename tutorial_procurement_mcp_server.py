@@ -141,6 +141,31 @@ def get_latest_report_paths() -> str:
     except Exception as exc:
         return _err(str(exc), detail=traceback.format_exc())
 
+@mcp.tool()
+def read_output_file(filename: str) -> str:
+    """Read a JSON or Excel file from the output directory and return its content.
+    Excel files are returned as Base64 strings.
+    JSON files are returned as raw text strings.
+    """
+    try:
+        path = OUTPUT_DIR / filename
+        if not path.resolve().is_relative_to(OUTPUT_DIR.resolve()):
+            return _err("Access denied: path outside output directory")
+        if not path.exists():
+            return _err(f"File not found: {filename}")
+            
+        if filename.endswith(".xlsx"):
+            import base64
+            with open(path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode('utf-8')
+            return _ok({"filename": filename, "format": "base64", "content": encoded})
+            
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return _ok({"filename": filename, "format": "text", "content": content})
+    except Exception as exc:
+        return _err(str(exc), detail=traceback.format_exc())
+
 
 @mcp.prompt()
 def exception_triage() -> str:

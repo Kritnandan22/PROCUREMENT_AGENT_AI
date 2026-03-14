@@ -176,7 +176,17 @@ class AppConfig:
     def _load_output_config(self) -> None:
         """Load output configuration."""
         output = self._yaml_config.get("output", {})
-        self.output_dir = Path(self._interpolate_env_vars(output.get("directory", "tutorial_agent_outputs")))
+        output_path = output.get("directory", "tutorial_agent_outputs")
+
+        # Allow environment variable override, but use default if not set
+        env_output_dir = os.getenv("OUTPUT_DIR")
+        if env_output_dir:
+            output_path = env_output_dir
+        elif output_path.startswith("${") and output_path.endswith("}"):
+            # Only interpolate if it's an env var reference
+            output_path = self._interpolate_env_vars(output_path)
+
+        self.output_dir = Path(output_path)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def get_exception_types(self) -> Dict[int, str]:

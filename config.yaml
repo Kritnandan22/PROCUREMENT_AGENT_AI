@@ -109,7 +109,7 @@ autonomy:
 
 # Output Configuration
 output:
-  directory: ${OUTPUT_DIR}
+  directory: ./tutorial_agent_outputs  # Can be overridden by OUTPUT_DIR env var
   json_format: "tutorial_agent_run_{timestamp}.json"
   excel_format: "tutorial_agent_run_{timestamp}.xlsx"
   retention_days: 90

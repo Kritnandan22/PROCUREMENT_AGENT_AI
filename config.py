@@ -174,8 +174,8 @@ class AppConfig:
             po_headers_all=tables.get("procurement", {}).get("po_headers_all", "PO.PO_HEADERS_ALL"),
             po_lines_all=tables.get("procurement", {}).get("po_lines_all", "PO.PO_LINES_ALL"),
             po_line_locations_all=tables.get("procurement", {}).get("po_line_locations_all", "PO.PO_LINE_LOCATIONS_ALL"),
-            po_vendors=tables.get("procurement", {}).get("po_vendors", tables.get("procurement", {}).get("vendors", "PO.PO_VENDORS_EBS")),
-            po_vendor_sites_all=tables.get("procurement", {}).get("vendor_sites", "PO.PO_VENDOR_SITES_ALL_EBS"),
+            po_vendors=tables.get("procurement", {}).get("po_vendors", tables.get("procurement", {}).get("vendors", "PO.PO_VENDORS_OBS")),
+            po_vendor_sites_all=tables.get("procurement", {}).get("vendor_sites", "PO.PO_VENDOR_SITES_OBS"),
             po_agreements=tables.get("procurement", {}).get("agreements", "APPS.PO_AGREEMENTS"),
             # Other
             hr_locations=tables.get("other", {}).get("hr_locations", "HR.HR_LOCATIONS"),

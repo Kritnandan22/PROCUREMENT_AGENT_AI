@@ -35,9 +35,9 @@ tables:
     po_headers_all: PO.PO_HEADERS_ALL
     po_lines_all: PO.PO_LINES_ALL
     po_line_locations_all: PO.PO_LINE_LOCATIONS_ALL
-    vendors: PO.PO_VENDORS_EBS
-    po_vendors: PO.PO_VENDORS_EBS
-    vendor_sites: PO.PO_VENDOR_SITES_ALL_EBS
+    vendors: PO.PO_VENDORS_OBS
+    po_vendors: PO.PO_VENDORS_OBS
+    vendor_sites: PO.PO_VENDOR_SITES_OBS
     agreements: APPS.PO_AGREEMENTS
   other:
     hr_locations: HR.HR_LOCATIONS

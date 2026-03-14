@@ -555,7 +555,7 @@ class OracleReadOnlyGateway:
             SELECT OWNER, TABLE_NAME, NUM_ROWS, LAST_ANALYZED
             FROM ALL_TABLES
             WHERE OWNER = :owner
-        """
+        f"""
         binds: dict[str, Any] = {"owner": schema.upper()}
         if name_filter:
             sql += " AND TABLE_NAME LIKE :name_filter"
@@ -800,7 +800,7 @@ class OracleReadOnlyGateway:
         limit: int = 5,
     ) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT fp.PEGGING_ID,
@@ -836,7 +836,7 @@ class OracleReadOnlyGateway:
         """
         try:
             rows = self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT fp.DEMAND_ID,
@@ -1045,7 +1045,7 @@ class OracleReadOnlyGateway:
         """Spend aggregated by quarter and category for time-period trend analysis (tutorial spec: Workflow 6).f"""
         try:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT TO_CHAR(ph.CREATION_DATE, 'YYYY-Q"Q"') AS time_period,
@@ -1146,7 +1146,7 @@ class OracleReadOnlyGateway:
         """Find items purchased from multiple suppliers where consolidation could save cost.f"""
         try:
             return self.execute_query(
-                """
+                f"""
                 SELECT *
                 FROM (
                     SELECT pl.ITEM_ID AS inventory_item_id,
@@ -1549,7 +1549,7 @@ class TutorialProcurementAgent:
         if vendor_id:
             try:
                 result = self.gateway.execute_query(
-                    """
+                    f"""
                     SELECT VENDOR_NAME,
                            END_DATE_ACTIVE,
                            HOLD_FLAG,
@@ -1586,7 +1586,7 @@ class TutorialProcurementAgent:
         if item_id:
             try:
                 result = self.gateway.execute_query(
-                    """
+                    f"""
                     SELECT SEGMENT1, PURCHASING_ENABLED_FLAG,
                            END_DATE_ACTIVE, INVENTORY_ITEM_ID
                     FROM {self.tables.system_items_b}
@@ -1622,7 +1622,7 @@ class TutorialProcurementAgent:
         if vendor_id and need_by_date_str:
             try:
                 result = self.gateway.execute_query(
-                    """
+                    f"""
                     SELECT LEAD_TIME_DAYS
                     FROM {self.tables.po_vendor_sites_all}
                     WHERE VENDOR_ID = :vendor_id
@@ -2441,7 +2441,7 @@ class TutorialProcurementAgent:
         """Enhanced safety stock workflow: both shortage AND excess detection."""
         # Query for items BELOW safety stock (shortage)
         shortage_rows = self.gateway.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT ss.INVENTORY_ITEM_ID,
@@ -2470,7 +2470,7 @@ class TutorialProcurementAgent:
 
         # Query for items ABOVE safety stock (excess inventory)
         excess_rows = self.gateway.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT ss.INVENTORY_ITEM_ID,

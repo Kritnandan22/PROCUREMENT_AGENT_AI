@@ -167,40 +167,43 @@ def read_output_file(filename: str) -> str:
         return _err(str(exc), detail=traceback.format_exc())
 
 
+def _download_instructions(workflow: str) -> str:
+    return (
+        f"1. Use run_procurement_agent with workflow='{workflow}' and engine='rules'.\n"
+        "2. Extract the absolute filename from the returned json_path and excel_path.\n"
+        "3. Use the read_output_file tool to fetch the file contents from the server.\n"
+        "4. Save the files to the user's local directory using your local file writing tools."
+    )
+
 @mcp.prompt()
 def exception_triage() -> str:
-    """Run the exception-triage procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='exception-triage' and engine='rules' to triage procurement exceptions."
-
+    """Run the exception-triage workflow and download results locally."""
+    return _download_instructions('exception-triage')
 
 @mcp.prompt()
 def late_supplier() -> str:
-    """Run the late-supplier procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='late-supplier' and engine='rules' to analyze late supplier arrivals."
-
+    """Run the late-supplier workflow and download results locally."""
+    return _download_instructions('late-supplier')
 
 @mcp.prompt()
 def safety_stock() -> str:
-    """Run the safety-stock procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='safety-stock' and engine='rules' to evaluate safety stock levels."
-
+    """Run the safety-stock workflow and download results locally."""
+    return _download_instructions('safety-stock')
 
 @mcp.prompt()
 def price_anomaly() -> str:
-    """Run the price-anomaly procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='price-anomaly' and engine='rules' to detect purchase order price anomalies."
-
+    """Run the price-anomaly workflow and download results locally."""
+    return _download_instructions('price-anomaly')
 
 @mcp.prompt()
 def demand_to_po() -> str:
-    """Run the demand-to-po procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='demand-to-po' and engine='rules' to convert firm demand into purchase orders."
-
+    """Run the demand-to-po workflow and download results locally."""
+    return _download_instructions('demand-to-po')
 
 @mcp.prompt()
 def spend_analytics() -> str:
-    """Run the spend-analytics procurement workflow."""
-    return "Please use the run_procurement_agent tool with workflow='spend-analytics' and engine='rules' to analyze and categorize procurement spend."
+    """Run the spend-analytics workflow and download results locally."""
+    return _download_instructions('spend-analytics')
 
 
 if __name__ == "__main__":

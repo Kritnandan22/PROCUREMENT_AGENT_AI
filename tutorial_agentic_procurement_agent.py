@@ -65,7 +65,10 @@ def _init_oracle_client() -> bool:
         else:
             oracledb.init_oracle_client()
         return True
-    except Exception:
+    except Exception as e:
+        import traceback
+        print(f"FAILED TO INIT ORACLE THICK MODE: {e}")
+        traceback.print_exc()
         return False
 
 

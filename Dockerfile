@@ -1,11 +1,11 @@
-# Use official Python 3.10 slim image
-FROM python:3.10-slim
+# Use official Python 3.10 slim bullseye image
+FROM python:3.10-slim-bullseye
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
-    libaio1t64 \
+    libaio1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Oracle Instant Client 21c Basic Lite

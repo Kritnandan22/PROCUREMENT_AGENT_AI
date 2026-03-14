@@ -169,10 +169,12 @@ def read_output_file(filename: str) -> str:
 
 def _download_instructions(workflow: str) -> str:
     return (
-        f"1. Use run_procurement_agent with workflow='{workflow}' and engine='rules'.\n"
-        "2. Extract the absolute filename from the returned json_path and excel_path.\n"
-        "3. Use the read_output_file tool to fetch the file contents from the server.\n"
-        "4. Save the files to the user's local directory using your local file writing tools."
+        f"You are a helpful procurement assistant. When asked to run the {workflow} workflow, follow these steps exactly:\n\n"
+        f"1. Execute `run_procurement_agent(workflow='{workflow}', engine='rules')`.\n"
+        "2. Parse the returned `json_path` and `excel_path`.\n"
+        "3. Read the JSON report using `read_output_file` and summarize the key findings or recommended actions directly in our chat.\n"
+        "4. Read the Excel report using `read_output_file`. Decode the Base64 content and write it to the user's local Downloads or workspace directory as an `.xlsx` file.\n"
+        "5. Print a friendly confirmation message telling the user exactly where the Excel file was saved and what the top recommendations were!"
     )
 
 @mcp.prompt()

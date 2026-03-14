@@ -20,7 +20,7 @@ Run examples:
   python tutorial_agentic_procurement_agent.py --workflow exception-triage
     python tutorial_agentic_procurement_agent.py \
             --workflow all --autonomy-level 2
-"""
+f"""
 
 from __future__ import annotations
 
@@ -672,7 +672,7 @@ class OracleReadOnlyGateway:
         item_id: int,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
-        """Get approved suppliers for an item, sorted cheapest+fastest (tutorial spec: Workflow 3)."""
+        """Get approved suppliers for an item, sorted cheapest+fastest (tutorial spec: Workflow 3).f"""
         try:
             return self.execute_query(
                 """
@@ -725,7 +725,7 @@ class OracleReadOnlyGateway:
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT ph.SEGMENT1 AS po_number,
@@ -763,7 +763,7 @@ class OracleReadOnlyGateway:
         plan_id: int,
     ) -> dict[str, Any]:
         rows = self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT ss.PLAN_ID,
@@ -919,7 +919,7 @@ class OracleReadOnlyGateway:
 
     def get_price_anomalies(self, limit: int) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             WITH price_base AS (
                 SELECT pl.ITEM_ID,
                        AVG(pl.UNIT_PRICE) AS avg_unit_price,
@@ -987,7 +987,7 @@ class OracleReadOnlyGateway:
         limit: int,
     ) -> list[dict[str, Any]]:
         return self.execute_query(
-            """
+            f"""
             SELECT *
             FROM (
                 SELECT p.COMPILE_DESIGNATOR AS plan_name,
@@ -1044,7 +1044,7 @@ class OracleReadOnlyGateway:
         )
 
     def get_spend_by_time_period(self, limit: int) -> list[dict[str, Any]]:
-        """Spend aggregated by quarter and category for time-period trend analysis (tutorial spec: Workflow 6)."""
+        """Spend aggregated by quarter and category for time-period trend analysis (tutorial spec: Workflow 6).f"""
         try:
             return self.execute_query(
                 """
@@ -1079,7 +1079,7 @@ class OracleReadOnlyGateway:
             return []
 
     def get_maverick_spend(self, limit: int) -> list[dict[str, Any]]:
-        """Detect purchases made outside of active blanket agreements (maverick spend)."""
+        """Detect purchases made outside of active blanket agreements (maverick spend).f"""
         try:
             return self.execute_query(
                 """
@@ -1115,7 +1115,7 @@ class OracleReadOnlyGateway:
             return []
 
     def get_single_source_items(self, limit: int) -> list[dict[str, Any]]:
-        """Identify items sourced from only one supplier (supply chain risk)."""
+        """Identify items sourced from only one supplier (supply chain risk).f"""
         try:
             return self.execute_query(
                 """
@@ -1145,7 +1145,7 @@ class OracleReadOnlyGateway:
             return []
 
     def get_consolidation_opportunities(self, limit: int) -> list[dict[str, Any]]:
-        """Find items purchased from multiple suppliers where consolidation could save cost."""
+        """Find items purchased from multiple suppliers where consolidation could save cost.f"""
         try:
             return self.execute_query(
                 """
@@ -1183,7 +1183,7 @@ class OracleReadOnlyGateway:
         """Get all available organization IDs from configured table.
 
         Returns a dict with total count and list of organizations.
-        """
+        f"""
         rows = self.execute_query(
             f"""
             SELECT DISTINCT
@@ -1341,7 +1341,7 @@ class TutorialProcurementAgent:
         return asdict(entry)
 
     def _get_org_id(self) -> int:
-        """Get default organization/operating unit from session context."""
+        """Get default organization/operating unit from session context.f"""
         if self.organization_id is not None:
             try:
                 result = self.gateway.execute_query(

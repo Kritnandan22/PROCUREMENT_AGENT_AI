@@ -8,6 +8,8 @@ services:
         value: 3.10.0
       - key: MCP_HOST
         value: 0.0.0.0
+      - key: ORACLE_CLIENT_PATH
+        value: /opt/oracle/instantclient_21_15
       - key: DB_HOST
         sync: false
       - key: DB_PORT

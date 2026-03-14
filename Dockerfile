@@ -15,6 +15,7 @@ RUN wget -q https://download.oracle.com/otn_software/linux/instantclient/2115000
     && rm instantclient-basiclite-linux.x64-21.15.0.0.0dbru.zip
 
 # Configure dynamic linker run-time bindings
+ENV ORACLE_CLIENT_PATH=/opt/oracle/instantclient_21_15
 RUN echo "/opt/oracle/instantclient_21_15" > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 

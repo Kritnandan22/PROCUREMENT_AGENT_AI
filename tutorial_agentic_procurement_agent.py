@@ -4112,6 +4112,7 @@ def run_agent(
     limit: int = 10,
     organization_id: int | None = None,
     engine: str = "rules",
+    save_to_disk: bool = True,
 ) -> dict[str, Any]:
     gateway = OracleReadOnlyGateway()
     connection_info = gateway.test_connection()
@@ -4150,12 +4151,16 @@ def run_agent(
         "connection": connection_info,
         "result": result,
     }
-    output_path = _save_report(report)
-    excel_path = _save_excel(report)
+    output_path = None
+    excel_path = None
+    if save_to_disk:
+        output_path = _save_report(report)
+        excel_path = _save_excel(report)
+        
     return {
         "report": report,
-        "json_path": str(output_path),
-        "excel_path": str(excel_path),
+        "json_path": str(output_path) if output_path else "",
+        "excel_path": str(excel_path) if excel_path else "",
         "connection": connection_info,
         "result": result,
     }

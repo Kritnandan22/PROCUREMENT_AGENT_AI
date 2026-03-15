@@ -173,6 +173,7 @@ def run_procurement_agent(
             limit=limit,
             organization_id=organization_id,
             engine=engine,
+            save_to_disk=False,
         )
         result = run_output["result"]
 
@@ -189,8 +190,7 @@ def run_procurement_agent(
             "engine": engine,
             "actions_created": action_count,
             "action_summary": result.get("action_summary", {}),
-            "json_path": run_output["json_path"],
-            "excel_path": run_output["excel_path"],
+            "data": result,
             "data_quality": {
                 "records_processed": result.get("records_processed", 0),
                 "has_results": action_count > 0,
@@ -211,122 +211,6 @@ def run_procurement_agent(
             detail=traceback.format_exc(),
         )
 
-
-@mcp.tool()
-def list_saved_reports(limit: int = 20) -> str:
-    """List the most recent saved JSON and Excel outputs."""
-    try:
-        files = sorted(
-            OUTPUT_DIR.glob("tutorial_agent_run_*"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )[: max(1, min(limit, 100))]
-        data = [
-            {
-                "name": path.name,
-                "path": str(path),
-                "size_bytes": path.stat().st_size,
-                "modified_at": path.stat().st_mtime,
-            }
-            for path in files
-        ]
-        return _ok(data, count=len(data))
-    except Exception as exc:
-        return _err(str(exc), detail=traceback.format_exc())
-
-
-@mcp.tool()
-def get_latest_report_paths() -> str:
-    """Return the latest JSON and Excel report paths if they exist."""
-    try:
-        json_files = sorted(
-            OUTPUT_DIR.glob("tutorial_agent_run_*.json"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        excel_files = sorted(
-            OUTPUT_DIR.glob("tutorial_agent_run_*.xlsx"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        payload = {
-            "latest_json": str(json_files[0]) if json_files else "",
-            "latest_excel": str(excel_files[0]) if excel_files else "",
-        }
-        return _ok(payload)
-    except Exception as exc:
-        return _err(str(exc), detail=traceback.format_exc())
-
-@mcp.tool()
-def read_output_file(filename: str) -> str:
-    """Read a JSON or Excel file and return its content (base64 for Excel).
-
-    For Excel files (.xlsx):
-    - Content is Base64 encoded
-    - Decode and save to your Downloads folder as .xlsx
-    - Open with Excel or Google Sheets
-
-    For JSON files (.json):
-    - Content is plain text
-    - Contains structured procurement analysis data
-    - Can be imported into your systems
-
-    Usage:
-    1. Call get_latest_report_paths() to find files
-    2. Call this tool with the filename
-    3. Decode Base64 (if Excel) and save locally
-    """
-    try:
-        path = OUTPUT_DIR / filename
-        if not path.resolve().is_relative_to(OUTPUT_DIR.resolve()):
-            return _err(
-                "❌ Access denied",
-                detail="Path outside output directory",
-            )
-        if not path.exists():
-            return _err(
-                f"❌ File not found: {filename}",
-                detail=f"Check with get_latest_report_paths() first",
-            )
-
-        if filename.endswith(".xlsx"):
-            import base64
-
-            with open(path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-            file_size_mb = path.stat().st_size / (1024 * 1024)
-            return _ok(
-                {
-                    "filename": filename,
-                    "format": "base64",
-                    "content": encoded,
-                    "size_bytes": path.stat().st_size,
-                    "instructions": (
-                        "Decode the Base64 content and save as .xlsx\n"
-                        "Open with Excel, Google Sheets, or LibreOffice"
-                    ),
-                },
-                message=f"✅ Excel file ready ({file_size_mb:.1f} MB)",
-            )
-
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
-        file_size_kb = path.stat().st_size / 1024
-        return _ok(
-            {
-                "filename": filename,
-                "format": "text",
-                "content": content,
-                "size_bytes": path.stat().st_size,
-                "instructions": "JSON data - can be imported into systems or parsed for analysis",
-            },
-            message=f"✅ JSON file ready ({file_size_kb:.1f} KB)",
-        )
-    except Exception as exc:
-        return _err(
-            f"❌ Cannot read file: {str(exc)}",
-            detail=traceback.format_exc(),
-        )
 
 
 @mcp.tool()
@@ -453,36 +337,18 @@ def get_workflow_help(workflow: str = "exception-triage") -> str:
 
 def _download_instructions(workflow: str) -> str:
     return (
-        f"You are a helpful procurement assistant helping the user run the {workflow} analysis.\n\n"
-        f"**Workflow**: {workflow}\n"
-        f"**Purpose**: Analyze procurement data and generate recommendations\n"
-        f"**Output**: Excel report + JSON data saved to user's computer\n\n"
-        f"**Follow these steps:**\n\n"
+        f"You are a helpful procurement assistant helping the user run exactly the {workflow} analysis workflow.\n\n"
+        f"**Follow these steps exactly:**\n\n"
         f"1️⃣ **Run Analysis**\n"
         f"   Execute: `run_procurement_agent(workflow='{workflow}', engine='rules')`\n"
-        f"   Wait for completion (1-5 minutes depending on data size)\n\n"
-        f"2️⃣ **Verify Results**\n"
-        f"   Check that the response shows:\n"
-        f"   - status: 'ok'\n"
-        f"   - actions_created: ≥1 (or note if 0)\n"
-        f"   - json_path and excel_path values\n\n"
-        f"3️⃣ **Read JSON Summary**\n"
-        f"   Execute: `read_output_file('tutorial_agent_run_*.json')` (use filename from step 2)\n"
-        f"   Summarize the key findings and recommendations in the chat\n\n"
-        f"4️⃣ **Download Excel Report**\n"
-        f"   Execute: `read_output_file('tutorial_agent_run_*.xlsx')` (use filename from step 2)\n"
-        f"   The response will contain 'content' as Base64\n"
-        f"   Decode the Base64 and save as: ~/Downloads/procurement_report.xlsx\n\n"
-        f"5️⃣ **Confirm & Summarize**\n"
-        f"   Tell the user:\n"
-        f"   - Where the file was saved\n"
-        f"   - Top 3 recommendations\n"
-        f"   - Next steps (review with procurement team, take action, etc)\n\n"
-        f"**Pro Tips:**\n"
-        f"- If no exceptions found (actions_created: 0), note that data may be clean\n"
-        f"- User can open the Excel file in Excel, Google Sheets, or LibreOffice\n"
-        f"- Share the JSON data with other systems if needed\n"
-        f"- Save the file with a date in the name (e.g., procurement_2026-03-15.xlsx)"
+        f"   The server will process the data and return the full JSON analysis back to you directly in the tool response under the 'data' key. No files are saved on the server.\n\n"
+        f"2️⃣ **Review & Summarize**\n"
+        f"   Read the JSON data you just received. Explain the top critical exceptions or actions directly in our chat so the user can easily see what happened.\n\n"
+        f"3️⃣ **Generate Output Files Locally**\n"
+        f"   Use your local terminal and python execution tools to write and run a script that converts the returned JSON data into a beautifully formatted Excel (.xlsx) file, or standard JSON file, based on what the user wants in their prompt.\n"
+        f"   Save the generated file directly to the user's workspace directory (e.g. ~/Downloads/procurement_{workflow}.xlsx).\n\n"
+        f"4️⃣ **Confirm Location**\n"
+        f"   Tell the user exactly where you saved their generated file to on their machine!"
     )
 
 @mcp.prompt()

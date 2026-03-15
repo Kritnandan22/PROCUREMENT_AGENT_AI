@@ -1268,6 +1268,7 @@ class TutorialProcurementAgent:
         self.actions: list[ActionRecord] = []
         self.decision_engine = ProcurementDecisionEngine()
         self._draft_po_seq = 0  # sequence for human-readable PO numbers
+        self.tables = gateway.tables
 
     def reset_actions(self) -> None:
         self.actions = []

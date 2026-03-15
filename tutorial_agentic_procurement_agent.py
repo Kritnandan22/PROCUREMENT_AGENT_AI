@@ -539,12 +539,49 @@ class OracleReadOnlyGateway:
         binds: dict[str, Any] | None = None,
         max_rows: int = 200,
     ) -> list[dict[str, Any]]:
+        """Execute a read-only SQL query with error handling.
+
+        Returns list of dicts (rows). Empty list if no results.
+        Raises DatabaseError on query failure with user-friendly message.
+        """
         query = _read_only_sql(sql)
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, binds or {})
-                rows = _rows_to_dicts(cur)
-        return rows[:max_rows]
+        try:
+            with _conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, binds or {})
+                    rows = _rows_to_dicts(cur)
+            result = rows[:max_rows]
+            # Log query success for debugging
+            if len(result) == 0:
+                pass  # No results - this is OK, caller will handle
+            return result
+        except Exception as e:
+            # Enhanced error message for troubleshooting
+            error_str = str(e)
+            if "ORA-" in error_str:
+                # Parse Oracle error code
+                if "ORA-00904" in error_str or "ORA-00903" in error_str:
+                    raise Exception(
+                        f"❌ Column or table name error: {error_str}\n"
+                        f"Fix: Check that columns and table names exist in your Oracle schema\n"
+                        f"Hint: Verify config.yaml table mappings match your installation\n"
+                        f"Contact: Your Oracle DBA for schema information"
+                    ) from e
+                elif "ORA-00942" in error_str:
+                    raise Exception(
+                        f"❌ Table does not exist: {error_str}\n"
+                        f"Fix: Check that table mappings in config.yaml are correct\n"
+                        f"Tables expected: Check SETUP_GUIDE_FOR_USERS.md"
+                    ) from e
+                elif "ORA-01403" in error_str:
+                    # No data found - this is OK, return empty list
+                    return []
+            # Re-raise with additional context
+            raise Exception(
+                f"Query execution failed: {error_str}\n"
+                f"Check: SQL syntax and table/column names\n"
+                f"Debug: Enable query logging for details"
+            ) from e
 
     def list_tables(
         self,

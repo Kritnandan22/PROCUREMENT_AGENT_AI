@@ -71,12 +71,12 @@ st.sidebar.title("⚙️ Server Configuration")
 
 # Get server URL from environment or user input
 import os
-default_url = os.getenv("MCP_SERVER_URL", "https://procurement-agent-ai.onrender.com")
+default_url = os.getenv("API_SERVER_URL", "https://procurement-api.onrender.com")
 
 server_url = st.sidebar.text_input(
-    "MCP Server URL",
+    "API Server URL",
     value=default_url,
-    placeholder="https://your-server.onrender.com"
+    placeholder="https://procurement-api.onrender.com"
 )
 st.session_state.mcp_server_url = server_url
 

@@ -22,12 +22,15 @@ from tutorial_agentic_procurement_agent import (
 
 app = Flask(__name__)
 
-# Initialize gateway globally
-try:
-    gateway = OracleReadOnlyGateway()
-except Exception as e:
-    print(f"Warning: Could not initialize gateway: {e}")
-    gateway = None
+# Gateway initialized lazily (on first use, not on startup)
+_gateway = None
+
+def get_gateway():
+    """Lazy initialization of gateway"""
+    global _gateway
+    if _gateway is None:
+        _gateway = OracleReadOnlyGateway()
+    return _gateway
 
 
 # ============================================================================
@@ -48,12 +51,7 @@ def health():
 @app.route("/test_connection", methods=["POST"])
 def test_connection():
     try:
-        if not gateway:
-            return jsonify({
-                "status": "error",
-                "message": "Gateway not initialized"
-            }), 500
-
+        gateway = get_gateway()
         result = gateway.test_connection()
         return jsonify({
             "status": "ok",
@@ -73,12 +71,7 @@ def test_connection():
 @app.route("/list_organization_ids", methods=["POST"])
 def list_organization_ids():
     try:
-        if not gateway:
-            return jsonify({
-                "status": "error",
-                "message": "Gateway not initialized"
-            }), 500
-
+        gateway = get_gateway()
         result = gateway.get_organizations()
         return jsonify({
             "status": "ok",

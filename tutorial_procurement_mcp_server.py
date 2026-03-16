@@ -392,6 +392,35 @@ if __name__ == "__main__":
             ),
             file=sys.stderr,
         )
+        api_key = os.getenv("PROCUREMENT_API_KEY")
+        if api_key:
+            import uvicorn
+            from starlette.middleware.base import BaseHTTPMiddleware
+            from starlette.responses import JSONResponse
+
+            class APIKeyMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request, call_next):
+                    path = request.url.path
+                    if path.startswith("/sse") or path.startswith("/messages"):
+                        key = request.query_params.get("apiKey")
+                        if not key:
+                            auth_header = request.headers.get("Authorization", "")
+                            if auth_header.startswith("Bearer "):
+                                key = auth_header.replace("Bearer ", "")
+                        
+                        if key != api_key:
+                            return JSONResponse(
+                                {"error": "Unauthorized", "message": "Invalid or missing API key"},
+                                status_code=401
+                            )
+                    return await call_next(request)
+
+            app = mcp.sse_app()
+            app.add_middleware(APIKeyMiddleware)
+            uvicorn.run(app, host=_host, port=_port)
+        else:
+            print("WARNING: No PROCUREMENT_API_KEY set. Server is running without authentication.", file=sys.stderr)
+            mcp.run(transport=transport)
     else:
         print("Starting Procurement MCP server (stdio)", file=sys.stderr)
-    mcp.run(transport=transport)
+        mcp.run(transport=transport)

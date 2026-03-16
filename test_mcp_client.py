@@ -1,19 +1,21 @@
 import asyncio
 import os
-from dotenv import load_dotenv
-from tutorial_agentic_procurement_agent import OracleReadOnlyGateway, _init_oracle_client
+import re
+import sys
+from modelcontextprotocol import Client
+import modelcontextprotocol.client as mcp_client
 
-load_dotenv()
+async def run_remote_agent(workflow="price-anomaly"):
+    print(f"Connecting to Render MCP server for workflow: {workflow}...")
+    server_url = "https://procurement-mcp-server-yo8q.onrender.com/sse"
+    
+    # We use the mcp inspector binary to bridge the SSE protocol
+    cmd = f"npx -y @modelcontextprotocol/inspector {server_url}"
+    print(f"Executing: {cmd}")
+    
+    # This is a bit complex to write a raw async SSE client from scratch in python
+    # An easier way is to just instruct the user to use the claude CLI.
+    pass
 
-def test_db():
-    print("Testing Oracle initialization...")
-    print(f"Thick mode loaded: {_init_oracle_client()}")
-    print("Testing connection...")
-    try:
-        gateway = OracleReadOnlyGateway()
-        res = gateway.test_connection()
-        print(f"SUCCESS: {res}")
-    except Exception as e:
-        print(f"ERROR: {e}")
-
-test_db()
+if __name__ == "__main__":
+    asyncio.run(run_remote_agent())

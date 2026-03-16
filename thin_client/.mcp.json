@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "procurement-remote": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/inspector",
+                "https://procurement-agent-ai.onrender.com/sse"
+            ],
+            "env": {
+                "PROCUREMENT_API_KEY": ""
+            }
+        }
+    }
+}
